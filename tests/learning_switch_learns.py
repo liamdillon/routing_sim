@@ -53,12 +53,12 @@ start = sim.core.simulate
 start()
 time.sleep(10)
 src.ping(dest)
-time.sleep(30)
+time.sleep(10)
 if(announcer3.unexpecteds != 0):
     print("listener received incorrect number of unexpected packets for 1st ping: %d" % announcer3.unexpecteds)
     exit()
 src.ping(dest)
-time.sleep(30)
+time.sleep(10)
 if(announcer3.unexpecteds != 0):
     print("listener received incorrect number of unexpected packets for 2nd ping: %d" % announcer3.unexpecteds)
     exit()

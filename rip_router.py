@@ -15,6 +15,26 @@ class RIPRouter (Entity):
         self.forward_table = {}
         pass
 
+    def shortest_path(self, dest):
+        min_dis = INF
+        for neighbor in self.forward_table:
+            n_dest = neighbor[dest]
+            if n_dest < min_dis:
+                min_dis = n_dest
+        return min_dis
+
+    def handle_discovery(self, src, packet):
+        dist = INF
+        if packet.is_link_up:
+            dist = 0
+        col = self.forward_table.get(src, None)
+        if col == None:
+            self.forward_table[src] = {}
+            self.forward_table[src][src] = dist
+        else:
+            col[src] = dist
+        
+
     def handle_rx (self, packet, port):
         # Add your code here!
         src   = packet.src.name
@@ -24,27 +44,25 @@ class RIPRouter (Entity):
         table_changed = False
         
         if ptype == 'DiscoveryPacket':
-            if packet.is_link_up:
-                col = self.forward_table.get(src, None)
-                if col == None:
-                    self.forward_table[src] = {}
-                    self.forward_table[src][src] = 0
-                else:
-                    col[src] = 0
-            else:
-                col = self.forward_table.get(src, None)
-                if col == None:
-                    self.forward_table[src] = {}
-                    self.forward_table[src][src] = 100
-                else:
-                    col[src] = 100
-
-            for neighbor, col in self.forward_table:
+            self.handle_discovery(src, packet)
+            for neighbor in self.forward_table:
+                if neighbor == None:
+                    self.forward_table[neighbor] = {}  
+                    
+                col = self.forward_table[neighbor]
                 for dest in col:
-                    dist = self.forward_table.get(dest, INF)
+                    dist = self.forward_table.get((port, dest), INF)
                     routing_update.add_destination(dest, dist)
-                                               
-        
+
+        elif ptype == 'RoutingUpdate':
+            all_dest = packet.all_dests()
+            for dest in all_dest:
+                neigh_to_dest = packet.get_distance(dest)
+                self_to_neigh = self.forward_table[src][src]
+                total_dest    = neigh_to_dest + self_to_neigh
+                self_to_dest  = self.shortest_path(dest)
+                if total_dest < self
+            
         if DEBUG:
             self.log("I am:  %s" % self.name)
             self.log("My packet: %s" % packet.__class__.__name__)

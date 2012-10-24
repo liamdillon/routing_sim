@@ -79,6 +79,7 @@ class RIPRouter (Entity):
                     routing_update.add_destination(dest, total_dist)
         
         #send routing update
+        import pdb; pdb.set_trace()
         if table_changed: 
             for neighbor in self.port_table:
                 neigh_port = self.port_table[neighbor]

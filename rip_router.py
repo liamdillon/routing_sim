@@ -28,7 +28,7 @@ class RIPRouter (Entity):
     def handle_discovery(self, src, packet, port):
         dist = INF
         if packet.is_link_up:
-            dist = 0
+            dist = 1
         col = self.forward_table.get(src, None)
         if col == None:
             self.forward_table[src]      = {}
@@ -55,7 +55,7 @@ class RIPRouter (Entity):
                 col = self.forward_table[neighbor]
                 for dest in col:
                     dist = self.forward_table.get((port, dest), INF)
-                    table_changed = True
+#                   table_changed = True
                     routing_update.add_destination(dest, dist)
 
         if ptype == 'RoutingUpdate':
@@ -66,7 +66,7 @@ class RIPRouter (Entity):
                 total_dist           = neigh_to_dest + self_to_neigh
                 self_to_dest, neigh  = self.shortest_path(dest)
                 if total_dist < self_to_dest:
-                    self.forwarding_table[src][dest] = total_dist
+                    self.forward_table[src][dest] = total_dist
                     table_changed = True
                     routing_update.add_destination(dest, total_dist)
         

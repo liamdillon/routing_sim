@@ -59,7 +59,6 @@ _DISABLE_CONSOLE_LOG = True
 
 create(switch)
 start = sim.core.simulate
-import pdb; pdb.set_trace();
 start()
 time.sleep(10)
 if(failed):

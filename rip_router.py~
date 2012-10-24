@@ -37,6 +37,14 @@ class RIPRouter (Entity):
         else:
             col[src] = dist
         
+    def remove_neigh(self, neigh):
+        table_without_neigh  = self.forward_table.copy()
+        for neighbor in self.forward_table:
+            if neighbor == neigh:
+                del table_without_neigh[neigh]
+        return table_without_neigh
+
+  
 
     def handle_rx (self, packet, port):
         # Add your code here!
@@ -72,7 +80,14 @@ class RIPRouter (Entity):
         
         #send routing update
         if table_changed: 
-            self.send(routing_update, None, flood=True)
+            for neighbor in self.port_table:
+                neigh_port = self.port_table[neighbor]
+                table_without_neigh = self.remove_neigh(neighbor)
+                no_neigh_routing_up = RoutingUpdate()
+                no_neigh_routing_up.paths = table_without_neigh
+                if DEBUG:
+                    self.log("no_neigh_routing_up: %s\n" % str(no_neigh_routing_up.all_dests())) 
+                self.send(no_neigh_routing_up, neigh_port, flood=False)
             if DEBUG:
                 self.log("Flooding routing update")
             
@@ -89,7 +104,7 @@ class RIPRouter (Entity):
             self.log("Source: %s" % src)
             self.log("Destination: %s" % dst)
         #  self.log("Distance from %s to %s is: %d" % (src, self.name, routing_update.get_distance(src)))
-            self.log("All Distances: %s" % str(routing_update.all_dests))
+            self.log("All Destinations: %s" % str(routing_update.all_dests()))
             self.log("routing table: %s\n" % str(self.forward_table)) 
         
 

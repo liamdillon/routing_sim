@@ -48,8 +48,8 @@ class RIPRouter (Entity):
 
     def handle_rx (self, packet, port):
         # Add your code here!
-        src   = packet.src.name
-        dst   = packet.dst.name
+        src   = packet.src
+        dst   = packet.dst
         ptype = packet.__class__.__name__
         routing_update = RoutingUpdate()
         table_changed = False

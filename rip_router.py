@@ -55,7 +55,7 @@ class RIPRouter (Entity):
                 col = self.forward_table[neighbor]
                 for dest in col:
                     dist = self.forward_table.get((port, dest), INF)
-#                   table_changed = True
+                    #table_changed = True
                     routing_update.add_destination(dest, dist)
 
         if ptype == 'RoutingUpdate':

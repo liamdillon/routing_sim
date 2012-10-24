@@ -15,15 +15,36 @@ class RIPRouter (Entity):
         self.forward_table = {}
         self.port_table = {}
 
-    def shortest_path(self, dest):
-        min_dis = INF
-        neigh = None
-        for neighbor in self.forward_table:
-            n_dest = self.forward_table[neighbor].get(dest, INF)
-            if n_dest < min_dis:
-                neigh = neighbor
-                min_dis = n_dest
-        return min_dis, neighbor
+    def shortest_path(self, dest, table):
+        min_dis  = INF
+        port     = None
+        min_port = None
+        neigh    = None
+        for neighbor in table:
+            n_dist = table[neighbor].get(dest, INF)
+            port = self.port_table[neighbor]
+            if n_dist < min_dis:
+                neigh    = neighbor
+                min_dis  = n_dist
+                min_port = port
+            elif n_dist == min_dis:
+                other_port = self.port_table[neighbor]
+                if other_port < min_port:
+                    min_port = other_port
+                    neigh    = neighbor
+                
+        return min_dis, neigh
+
+    def all_shortest_dists(self, table, node):
+        paths = {}
+        for neigh,col in table.items():
+            for dest,dist in col.items():
+                if paths.get(dest, INF) > dist:
+                    # implement split horizon poison reverse
+                    if neigh == node and dest != node:
+                        dist = INF
+                    paths[dest] = dist
+        return paths
 
     def handle_discovery(self, src, packet, port):
         dist = INF
@@ -36,15 +57,15 @@ class RIPRouter (Entity):
             self.port_table[src]         = port
         else:
             col[src] = dist
-        
-    def remove_neigh(self, neigh):
+    
+    #NEED TO NOT REMOVE NIEGHBOR SO SPLIT HORIZON POISON REVERSE    
+    def remove_neigh_and_self(self, neigh):
         table_without_neigh  = self.forward_table.copy()
-        for neighbor in self.forward_table:
-            if neighbor == neigh:
-                del table_without_neigh[neigh]
+        del table_without_neigh[neigh]
+        if table_without_neigh.get(self, False):
+            del table_without_neigh[self]
         return table_without_neigh
 
-  
 
     def handle_rx (self, packet, port):
         # Add your code here!
@@ -62,40 +83,42 @@ class RIPRouter (Entity):
                     
                 col = self.forward_table[neighbor]
                 for dest in col:
-                    dist = self.forward_table.get(dest, INF)
-                    #table_changed = True
+                    dist = col.get(dest, INF)
+                    table_changed = True
                     routing_update.add_destination(dest, dist)
 
         if ptype == 'RoutingUpdate':
             all_dest = packet.all_dests()
+            self.log("all_dest is %s" %str(all_dest))
+            self.log("packet.paths is %s" %str(packet.paths))
             for dest in all_dest:
-                neigh_to_dest        = packet.get_distance(dest)
-                self_to_neigh        = self.forward_table[src][src]
-                total_dist           = neigh_to_dest + self_to_neigh
-                self_to_dest, neigh  = self.shortest_path(dest)
-                if total_dist < self_to_dest:
-                    self.forward_table[src][dest] = total_dist
-                    table_changed = True
-                    routing_update.add_destination(dest, total_dist)
+                if dest is not self:
+                    neigh_to_dest        = packet.get_distance(dest)
+                    self_to_neigh        = self.forward_table[src][src]
+                    total_dist           = neigh_to_dest + self_to_neigh
+                    self_to_dest, neigh  = self.shortest_path(dest, self.forward_table)
+                    if total_dist < self_to_dest:
+                        self.forward_table[src][dest] = total_dist
+                        table_changed = True
+                        routing_update.add_destination(dest, total_dist)
         
         #send routing update
-        import pdb; pdb.set_trace()
         if table_changed: 
             for neighbor in self.port_table:
                 neigh_port = self.port_table[neighbor]
-                table_without_neigh = self.remove_neigh(neighbor)
+                table_without_neigh_self = self.remove_neigh_and_self(neighbor)
+                updated_path = self.all_shortest_dists(table_without_neigh_self)
+                # deal with split_horizon poison reverse
+                
                 no_neigh_routing_up = RoutingUpdate()
-                no_neigh_routing_up.paths = table_without_neigh
-                if DEBUG:
-                    self.log("no_neigh_routing_up: %s\n" % str(no_neigh_routing_up.all_dests())) 
+                for node,dist in updated_path.items():
+                    no_neigh_routing_up.add_destination(node, dist)
                 self.send(no_neigh_routing_up, neigh_port, flood=False)
-            if DEBUG:
-                self.log("Flooding routing update")
             
         #packet is a data packet
         if ptype is not 'RoutingUpdate' and ptype is not 'UpdatePacket':
             #neighbor to forward to
-            self_to_dest, neigh = self.shortest_path(dest)
+            self_to_dest, neigh = self.shortest_path(dest, self.forward_table)
             forward_to_port     = self.port_table[neigh]
             self.send(packet, forward_to_port)
             

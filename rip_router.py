@@ -32,7 +32,9 @@ class RIPRouter (Entity):
                 if other_port < min_port:
                     min_port = other_port
                     neigh    = neighbor
-                
+            if neigh == None:
+                neigh = neighbor
+
         return min_dis, neigh
 
     def all_shortest_dists(self, node):
@@ -60,15 +62,7 @@ class RIPRouter (Entity):
             col[src] = dist
     
     #NEED TO NOT REMOVE NIEGHBOR SO SPLIT HORIZON POISON REVERSE    
-    def remove_neigh_and_self(self, neigh):
-#        self.log("We are %s" % (self.__repr__(), str(neigh)))
-        table_without_neigh  = self.forward_table.copy()
-        del table_without_neigh[neigh]
-        if table_without_neigh.get(self, False):
-            del table_without_neigh[self]
-        return table_without_neigh
-
-
+   
     def handle_rx (self, packet, port):
         # Add your code here!
         src   = packet.src

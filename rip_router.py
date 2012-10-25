@@ -35,15 +35,16 @@ class RIPRouter (Entity):
                 
         return min_dis, neigh
 
-    def all_shortest_dists(self, table, node):
+    def all_shortest_dists(self, node):
         paths = {}
-        for neigh,col in table.items():
+        for neigh,col in self.forward_table.items():
             for dest,dist in col.items():
-                if paths.get(dest, INF) > dist:
+                if (neigh != node or dest != node) and self != neigh:
+                    if paths.get(dest, INF) > dist:
                     # implement split horizon poison reverse
-                    if neigh == node and dest != node:
-                        dist = INF
-                    paths[dest] = dist
+                        if node is neigh:
+                            dist = INF
+                        paths[dest] = dist
         return paths
 
     def handle_discovery(self, src, packet, port):
@@ -110,7 +111,7 @@ class RIPRouter (Entity):
             for neighbor in self.port_table:
                 neigh_port = self.port_table[neighbor]
                 table_without_neigh_self = self.remove_neigh_and_self(neighbor)
-                updated_path = self.all_shortest_dists(table_without_neigh_self, neighbor)
+                updated_path = self.all_shortest_dists(neighbor)
                 # deal with split_horizon poison reverse
                 
                 no_neigh_routing_up = RoutingUpdate()

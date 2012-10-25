@@ -110,7 +110,6 @@ class RIPRouter (Entity):
         if table_changed: 
             for neighbor in self.port_table:
                 neigh_port = self.port_table[neighbor]
-                table_without_neigh_self = self.remove_neigh_and_self(neighbor)
                 updated_path = self.all_shortest_dists(neighbor)
                 # deal with split_horizon poison reverse
                 

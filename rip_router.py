@@ -61,7 +61,10 @@ class RIPRouter (Entity):
                     self.port_table[src]         = port
                 else:
                     col[src] = dist
-    
+            else:
+                del self.forward_table[src]
+                del self.port_table[src]
+
     #NEED TO NOT REMOVE NIEGHBOR SO SPLIT HORIZON POISON REVERSE    
    
     def handle_rx (self, packet, port):
@@ -84,19 +87,20 @@ class RIPRouter (Entity):
                     
 
         if ptype == 'RoutingUpdate':
-            all_dest = packet.all_dests()
-            self.log("all_dest is %s" %str(all_dest))
+            if self.port_table.get(src, None) is not None:
+                all_dest = packet.all_dests()
+                self.log("all_dest is %s" %str(all_dest))
  #           self.log("packet.paths is %s" %str(packet.paths))
-            for dest in all_dest:
-                if dest is not self:
-                    neigh_to_dest        = packet.get_distance(dest)
-                    self_to_neigh        = self.forward_table[src][src]
-                    total_dist           = neigh_to_dest + self_to_neigh
-                    self_to_dest, neigh  = self.shortest_path(dest, self.forward_table)
-                    if total_dist < self_to_dest:
-                        self.forward_table[src][dest] = total_dist
+                for dest in all_dest:
+                    if dest is not self:
+                        neigh_to_dest        = packet.get_distance(dest)
+                        self_to_neigh        = self.forward_table[src][src]
+                        total_dist           = neigh_to_dest + self_to_neigh
+                        self_to_dest, neigh  = self.shortest_path(dest, self.forward_table)
+                        if total_dist < self_to_dest:
+                            self.forward_table[src][dest] = total_dist
 #                        self.log("should be %s is %s" % (dest, str(self.forward_table)))
-                        table_changed = True
+                            table_changed = True
 
 
         #send routing update

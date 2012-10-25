@@ -101,7 +101,9 @@ class RIPRouter (Entity):
                             self.forward_table[src][dest] = total_dist
 #                        self.log("should be %s is %s" % (dest, str(self.forward_table)))
                             table_changed = True
-
+                for dest in self.forward_table[src]:
+                    if dest not in all_dest and dest not in self.port_table:
+                        self.forward_table[src][dest] = INF
 
         #send routing update
         if table_changed: 

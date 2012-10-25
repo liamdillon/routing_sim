@@ -12,7 +12,7 @@ import time
 
 testing = True
 failed = False
-waittime = 5
+waittime = 7
 expectedUpdate1 = {}
 expectedSender1 = {}
 testCaseNum = 0

@@ -1,6 +1,6 @@
 from sim.api import *
 from sim.basics import *
-
+from copy import deepcopy
 DEBUG = True
 
 INF = 100
@@ -27,12 +27,14 @@ class RIPRouter (Entity):
                 neigh    = neighbor
                 min_dis  = n_dist
                 min_port = port
-            elif n_dist == min_dis:
+            elif n_dist == min_dis and n_dist != INF:
                 other_port = self.port_table[neighbor]
                 if other_port < min_port:
                     min_port = other_port
                     neigh    = neighbor
-                
+            else:
+                neigh = neighbor
+
         return min_dis, neigh
 
     def all_shortest_dists(self, table, node):
@@ -57,11 +59,16 @@ class RIPRouter (Entity):
             self.port_table[src]         = port
         else:
             col[src] = dist
+        return dist
     
     #NEED TO NOT REMOVE NIEGHBOR SO SPLIT HORIZON POISON REVERSE    
     def remove_neigh_and_self(self, neigh):
-        table_without_neigh  = self.forward_table.copy()
-        del table_without_neigh[neigh]
+        table_without_neigh  = deepcopy(self.forward_table)
+        if table_without_neigh.get(neigh, False):
+            if table_without_neigh[neigh].get(neigh, False):
+                del table_without_neigh[neigh][neigh]
+                if table_without_neigh[neigh] == {}:
+                    del table_without_neigh[neigh]
         if table_without_neigh.get(self, False):
             del table_without_neigh[self]
         return table_without_neigh
@@ -69,8 +76,8 @@ class RIPRouter (Entity):
 
     def handle_rx (self, packet, port):
         # Add your code here!
-        src   = packet.src
-        dst   = packet.dst
+        src   = packet.src.__repr__()
+        dst   = packet.dst.__repr__()
         ptype = packet.__class__.__name__
         routing_update = RoutingUpdate()
         table_changed = False
@@ -79,15 +86,15 @@ class RIPRouter (Entity):
             self.handle_discovery(src, packet, port)
             for neighbor in self.forward_table:
                 if neighbor == None:
-                    self.forward_table[neighbor] = {}  
-                    
+                    self.forward_table[neighbor] = {}
+
                 col = self.forward_table[neighbor]
                 for dest in col:
                     dist = col.get(dest, INF)
                     table_changed = True
                     routing_update.add_destination(dest, dist)
 
-        if ptype == 'RoutingUpdate':
+        elif ptype == 'RoutingUpdate':
             all_dest = packet.all_dests()
             self.log("all_dest is %s" %str(all_dest))
             self.log("packet.paths is %s" %str(packet.paths))
@@ -107,18 +114,20 @@ class RIPRouter (Entity):
             for neighbor in self.port_table:
                 neigh_port = self.port_table[neighbor]
                 table_without_neigh_self = self.remove_neigh_and_self(neighbor)
-                updated_path = self.all_shortest_dists(table_without_neigh_self)
+                updated_path = self.all_shortest_dists(table_without_neigh_self, neighbor)
                 # deal with split_horizon poison reverse
                 
                 no_neigh_routing_up = RoutingUpdate()
                 for node,dist in updated_path.items():
                     no_neigh_routing_up.add_destination(node, dist)
+                self.log("no_neigh_routing_update: %s" %str(no_neigh_routing_up))
                 self.send(no_neigh_routing_up, neigh_port, flood=False)
             
         #packet is a data packet
-        if ptype is not 'RoutingUpdate' and ptype is not 'UpdatePacket':
+        else:
             #neighbor to forward to
-            self_to_dest, neigh = self.shortest_path(dest, self.forward_table)
+            self_to_dest, neigh = self.shortest_path(dst, self.forward_table)
+
             forward_to_port     = self.port_table[neigh]
             self.send(packet, forward_to_port)
             

@@ -1,6 +1,6 @@
 import unittest
 import rip_router
-
+from copy import deepcopy 
 class TestRemoveNeighAndSelf(unittest.TestCase):
     
     def setUp(self):
@@ -8,7 +8,7 @@ class TestRemoveNeighAndSelf(unittest.TestCase):
 
     def test_remove_neigh_and_self(self): 
         r = rip_router.RIPRouter()
-        r.forward_table = self.test_table
+        r.forward_table = deepcopy(self.test_table)
         h = r.remove_neigh_and_self('a', 'b')
         should_be = {'b' : {'a':2}, 'c': {'a':4,'b':5}}
         self.assertEqual(h, should_be)

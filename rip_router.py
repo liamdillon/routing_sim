@@ -42,6 +42,8 @@ class RIPRouter (Entity):
         for neigh,col in self.forward_table.items():
             for dest,dist in col.items():
                 if (neigh != node or dest != node) and self != neigh:
+                    self.log("paths is: %s" % str(paths))
+                    self.log("dist is: %s" % dist)
                     if paths.get(dest, INF) > dist:
                     # implement split horizon poison reverse
                         if node is neigh:
@@ -102,7 +104,7 @@ class RIPRouter (Entity):
 #                        self.log("should be %s is %s" % (dest, str(self.forward_table)))
                             table_changed = True
                 for dest in self.forward_table[src]:
-                    if dest not in all_dest and dest not in self.port_table:
+                    if dest not in all_dest and dest is not src:
                         self.forward_table[src][dest] = INF
 
         #send routing update

@@ -60,6 +60,7 @@ class RIPRouter (Entity):
     
     #NEED TO NOT REMOVE NIEGHBOR SO SPLIT HORIZON POISON REVERSE    
     def remove_neigh_and_self(self, neigh):
+#        self.log("We are %s" % (self.__repr__(), str(neigh)))
         table_without_neigh  = self.forward_table.copy()
         del table_without_neigh[neigh]
         if table_without_neigh.get(self, False):
@@ -99,15 +100,17 @@ class RIPRouter (Entity):
                     self_to_dest, neigh  = self.shortest_path(dest, self.forward_table)
                     if total_dist < self_to_dest:
                         self.forward_table[src][dest] = total_dist
+                        self.log("should be %s is %s" % (dest, str(self.forward_table)))
                         table_changed = True
                         routing_update.add_destination(dest, total_dist)
-        
+
+
         #send routing update
         if table_changed: 
             for neighbor in self.port_table:
                 neigh_port = self.port_table[neighbor]
                 table_without_neigh_self = self.remove_neigh_and_self(neighbor)
-                updated_path = self.all_shortest_dists(table_without_neigh_self)
+                updated_path = self.all_shortest_dists(table_without_neigh_self, neighbor)
                 # deal with split_horizon poison reverse
                 
                 no_neigh_routing_up = RoutingUpdate()

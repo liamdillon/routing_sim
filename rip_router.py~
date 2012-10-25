@@ -35,11 +35,14 @@ class RIPRouter (Entity):
                 
         return min_dis, neigh
 
-    def all_shortest_dists(self, table):
+    def all_shortest_dists(self, table, node):
         paths = {}
         for neigh,col in table.items():
             for dest,dist in col.items():
                 if paths.get(dest, INF) > dist:
+                    # implement split horizon poison reverse
+                    if neigh == node and dest != node:
+                        dist = INF
                     paths[dest] = dist
         return paths
 
@@ -54,7 +57,8 @@ class RIPRouter (Entity):
             self.port_table[src]         = port
         else:
             col[src] = dist
-        
+    
+    #NEED TO NOT REMOVE NIEGHBOR SO SPLIT HORIZON POISON REVERSE    
     def remove_neigh_and_self(self, neigh):
         table_without_neigh  = self.forward_table.copy()
         del table_without_neigh[neigh]
@@ -62,7 +66,6 @@ class RIPRouter (Entity):
             del table_without_neigh[self]
         return table_without_neigh
 
-  
 
     def handle_rx (self, packet, port):
         # Add your code here!
@@ -105,6 +108,8 @@ class RIPRouter (Entity):
                 neigh_port = self.port_table[neighbor]
                 table_without_neigh_self = self.remove_neigh_and_self(neighbor)
                 updated_path = self.all_shortest_dists(table_without_neigh_self)
+                # deal with split_horizon poison reverse
+                
                 no_neigh_routing_up = RoutingUpdate()
                 for node,dist in updated_path.items():
                     no_neigh_routing_up.add_destination(node, dist)

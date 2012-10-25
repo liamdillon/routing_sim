@@ -1,7 +1,7 @@
 from sim.api import *
 from sim.basics import *
 
-DEBUG = True
+DEBUG = False
 
 INF = 100
 
@@ -42,8 +42,9 @@ class RIPRouter (Entity):
         for neigh,col in self.forward_table.items():
             for dest,dist in col.items():
                 if (neigh != node or dest != node) and self != neigh:
-                    self.log("paths is: %s" % str(paths))
-                    self.log("dist is: %s" % dist)
+                    if DEBUG:
+                        self.log("paths is: %s" % str(paths))
+                        self.log("dist is: %s" % dist)
                     if paths.get(dest, INF) > dist:
                     # implement split horizon poison reverse
                         if node is neigh:
@@ -89,10 +90,11 @@ class RIPRouter (Entity):
                     
 
         if ptype == 'RoutingUpdate':
-            if self.port_table.get(src, None) is not None:
+            if self.port_table.get(src, None) is not None and self.forward_table.get(src, None) is not None:
                 all_dest = packet.all_dests()
-                self.log("all_dest is %s" %str(all_dest))
- #           self.log("packet.paths is %s" %str(packet.paths))
+                if DEBUG:
+                    self.log("all_dest is %s" %str(all_dest))
+                    self.log("packet.paths is %s" %str(packet.paths))
                 for dest in all_dest:
                     if dest is not self:
                         neigh_to_dest        = packet.get_distance(dest)
@@ -101,7 +103,8 @@ class RIPRouter (Entity):
                         self_to_dest, neigh  = self.shortest_path(dest, self.forward_table)
                         if total_dist < self_to_dest:
                             self.forward_table[src][dest] = total_dist
-#                        self.log("should be %s is %s" % (dest, str(self.forward_table)))
+                            if DEBUG:
+                                self.log("should be %s is %s" % (dest, str(self.forward_table)))
                             table_changed = True
                 for dest in self.forward_table[src]:
                     if dest not in all_dest and dest is not src:
@@ -109,22 +112,25 @@ class RIPRouter (Entity):
 
         #send routing update
         if table_changed: 
-            self.log("Porttable: %s " % str(self.port_table))
+            if DEBUG:
+                self.log("Porttable: %s " % str(self.port_table))
             for neighbor in self.port_table:
                 neigh_port = self.port_table[neighbor]
-                self.log("neighbor  %s" % neighbor)
-                self.log("neighbor_port %s" % neigh_port)
+                if DEBUG:
+                    self.log("neighbor  %s" % neighbor)
+                    self.log("neighbor_port %s" % neigh_port)
                 updated_path = self.all_shortest_dists(neighbor)
-                self.log("Updated_path: %s" % updated_path)
+                if DEBUG:
+                    self.log("Updated_path: %s" % updated_path)
 
-                # deal with split_horizon poison reverse
-                
                 no_neigh_routing_up = RoutingUpdate()
                 for node,dist in updated_path.items():
-                    no_neigh_routing_up.add_destination(node, dist)
-                self.log("no_neigh_routing_up: %s to %s" % (no_neigh_routing_up.str_routing_table(), neighbor))
-                if not (ptype == 'DiscoveryPacket' and no_neigh_routing_up == {}):
-                    self.send(no_neigh_routing_up, neigh_port)
+                    if node is not neighbor:
+                        no_neigh_routing_up.add_destination(node, dist)
+                if DEBUG:
+                    self.log("no_neigh_routing_up: %s to %s" % (no_neigh_routing_up.str_routing_table(), neighbor))
+#                if not (ptype == 'DiscoveryPacket' and no_neigh_routing_up == {}):
+                self.send(no_neigh_routing_up, neigh_port)
             
         #packet is a data packet
         if ptype is not 'RoutingUpdate' and ptype is not 'DiscoveryPacket':

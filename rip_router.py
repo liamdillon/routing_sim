@@ -1,7 +1,7 @@
 from sim.api import *
 from sim.basics import *
 
-DEBUG = False
+DEBUG = True
 
 INF = 100
 
@@ -42,7 +42,7 @@ class RIPRouter (Entity):
         for neigh,col in self.forward_table.items():
             for dest,dist in col.items():
                 if (neigh != node or dest != node) and self != neigh:
-                    if DEBUG:
+                    if False:
                         self.log("paths is: %s" % str(paths))
                         self.log("dist is: %s" % dist)
                     if paths.get(dest, INF) > dist:
@@ -96,60 +96,55 @@ class RIPRouter (Entity):
                     self.log("all_dest is %s" %str(all_dest))
                     self.log("packet.paths is %s" %str(packet.paths))
                 for dest in all_dest:
-                    if dest is not self:
+                    if dest != self:
                         neigh_to_dest        = packet.get_distance(dest)
                         self_to_neigh        = self.forward_table[src][src]
                         total_dist           = neigh_to_dest + self_to_neigh
                         self_to_dest, neigh  = self.shortest_path(dest, self.forward_table)
                         if total_dist < self_to_dest:
                             self.forward_table[src][dest] = total_dist
-                            if DEBUG:
+                            if False:
                                 self.log("should be %s is %s" % (dest, str(self.forward_table)))
                             table_changed = True
                 for dest in self.forward_table[src]:
-                    if dest not in all_dest and dest is not src:
+                    if dest not in all_dest and dest != src:
                         self.forward_table[src][dest] = INF
 
         #send routing update
         if table_changed: 
             if DEBUG:
-                self.log("Porttable: %s " % str(self.port_table))
+                self.log("Port table: %s " % str(self.port_table))
             for neighbor in self.port_table:
                 neigh_port = self.port_table[neighbor]
                 if DEBUG:
-                    self.log("neighbor  %s" % neighbor)
-                    self.log("neighbor_port %s" % neigh_port)
+                    self.log("I am sending to  %s" % neighbor)
                 updated_path = self.all_shortest_dists(neighbor)
                 if DEBUG:
                     self.log("Updated_path: %s" % updated_path)
 
                 no_neigh_routing_up = RoutingUpdate()
                 for node,dist in updated_path.items():
-                    if node is not neighbor:
+                    if node != neighbor:
                         no_neigh_routing_up.add_destination(node, dist)
                 if DEBUG:
-                    self.log("no_neigh_routing_up: %s to %s" % (no_neigh_routing_up.str_routing_table(), neighbor))
+                    self.log("Sending finalized routing update: %s to %s" % (no_neigh_routing_up.str_routing_table(), neighbor))
 #                if not (ptype == 'DiscoveryPacket' and no_neigh_routing_up == {}):
                 self.send(no_neigh_routing_up, neigh_port)
             
         #packet is a data packet
         if ptype is not 'RoutingUpdate' and ptype is not 'DiscoveryPacket':
             #neighbor to forward to
-            self_to_dest, neigh = self.shortest_path(dest, self.forward_table)
+            self_to_dest, neigh = self.shortest_path(dst, self.forward_table)
             forward_to_port     = self.port_table[neigh]
             self.send(packet, forward_to_port)
             
         if DEBUG:
-            self.log("I am:  %s" % self.name)
-            self.log("My packet: %s" % packet.__class__.__name__)
+            self.log("Receiving packet: %s" % packet.__class__.__name__)
             self.log("Source: %s" % src)
             self.log("Destination: %s" % dst)
             if ptype == 'RoutingUpdate':
-                self.log("Packets table: %s" % str(packet.str_routing_table()))
-            self.log("forward table: %s\n" % str(self.forward_table))   
-
-
-
-  
-        
-
+                self.log("Table in received routing update: %s" % str(packet.str_routing_table()))
+            self.log("forward table:")
+            for item in self.forward_table:
+                self.log("%s: %s" % (item.__repr__(), str(self.forward_table[item])))
+            self.log("\n")

@@ -1,7 +1,7 @@
 from sim.api import *
 from sim.basics import *
 
-DEBUG = False
+DEBUG = True
 
 INF = 100
 
@@ -99,6 +99,9 @@ class RIPRouter (Entity):
         ptype = packet.__class__.__name__
         table_changed = False
         
+        if ptype == 'RoutingUpdate' and src not in self.port_table:
+            return
+
         if ptype == 'DiscoveryPacket':
             table_changed = self.handle_discovery(src, packet, port)
             for neighbor in self.forward_table:
@@ -140,12 +143,16 @@ class RIPRouter (Entity):
 
         #send routing update
         if table_changed: 
+
             if DEBUG:
                 self.log("Port table: %s " % str(self.port_table))
+
             for neighbor in self.port_table:
                 neigh_port = self.port_table[neighbor]
+
                 if DEBUG:
                     self.log("I am sending to  %s" % neighbor)
+
                 updated_path = self.all_shortest_dists(neighbor)
                 if DEBUG:
                     self.log("Updated_path: %s" % updated_path)
@@ -164,10 +171,18 @@ class RIPRouter (Entity):
             #neighbor to forward to
             self_to_dest, neigh = self.shortest_path(dst, self.forward_table)
             forward_to_port     = self.port_table[neigh]
-            self.send(packet, forward_to_port)
+            if self_to_dest < INF:
+                self.send(packet, forward_to_port):
+
+
             
         if DEBUG:
             self.log("Receiving packet: %s" % packet.__class__.__name__)
+            if ptype == 'DiscoveryPacket':
+                if packet.is_link_up:
+                    self.log("Link is up")
+                else:
+                    self.log("Link is down")
             self.log("Source: %s" % src)
             self.log("Destination: %s" % dst)
             if ptype == 'RoutingUpdate':

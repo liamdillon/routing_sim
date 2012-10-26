@@ -1,7 +1,7 @@
 from sim.api import *
 from sim.basics import *
 
-DEBUG = False
+DEBUG = True
 
 INF = 100
 
@@ -42,9 +42,9 @@ class RIPRouter (Entity):
         for neigh,col in self.forward_table.items():
             for dest,dist in col.items():
                 if (neigh != node or dest != node) and self != neigh:
-                    if DEBUG:
-                        self.log("paths is: %s" % str(paths))
-                        self.log("dist is: %s" % dist)
+#                    if DEBUG:
+#                        self.log("paths is: %s" % str(paths))
+#                        self.log("dist is: %s" % dist)
                     if paths.get(dest, INF) > dist:
                     # implement split horizon poison reverse
                         if node is neigh:
